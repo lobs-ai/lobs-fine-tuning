@@ -1,0 +1,179 @@
+{
+  "meta": {
+    "runId": "synth-config_change-uifo4i",
+    "agentType": "synth",
+    "model": "gemini",
+    "succeeded": true,
+    "totalTurns": 5,
+    "stopReason": "end_turn",
+    "toolsOffered": [
+      "read",
+      "edit",
+      "write",
+      "ls",
+      "grep",
+      "exec",
+      "create_task",
+      "update_task",
+      "list_tasks",
+      "get_config",
+      "set_config",
+      "list_config_paths"
+    ],
+    "systemPrompt": "You are a squad agent. Use the available tools to complete the user's task. Read files before editing them, prefer targeted actions over broad sweeps, and stop once the task is done.",
+    "category": "config_change",
+    "synth_seed": 1777227725
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want to enable the experimental 'fast_streaming' mode in the gateway and also bump the 'max_concurrent_global' subagents to 10. Can you check if those paths exist and update them?"
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I will list the available configuration paths to locate the settings for 'fast_streaming' and 'max_concurrent_global'."
+        },
+        {
+          "type": "tool_use",
+          "id": "tu_001",
+          "name": "list_config_paths",
+          "input": {}
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "tu_001",
+          "content": [
+            "llm.primary.model",
+            "llm.primary.provider",
+            "chat.delivery.mode",
+            "chat.experimental.fast_streaming",
+            "subagents.max_concurrent_global",
+            "subagents.max_concurrent_per_session",
+            "policy.approvals.require_for_tags"
+          ]
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I found the paths: `chat.experimental.fast_streaming` and `subagents.max_concurrent_global`. I'll check their current values before updating."
+        },
+        {
+          "type": "tool_use",
+          "id": "tu_002",
+          "name": "get_config",
+          "input": {
+            "path": ""
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "tu_002",
+          "content": {
+            "llm": {
+              "primary": {
+                "model": "gemini-1.5-pro",
+                "provider": "google"
+              }
+            },
+            "chat": {
+              "delivery": "buffered",
+              "experimental": {
+                "fast_streaming": false
+              }
+            },
+            "subagents": {
+              "max_concurrent_global": 5,
+              "max_concurrent_per_session": 2
+            },
+            "policy": {
+              "approvals": {
+                "require_for_tags": [
+                  "shell",
+                  "filesystem"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Updating `chat.experimental.fast_streaming` to `true` and `subagents.max_concurrent_global` to `10`."
+        },
+        {
+          "type": "tool_use",
+          "id": "tu_003",
+          "name": "set_config",
+          "input": {
+            "path": "chat.experimental.fast_streaming",
+            "value": true
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "tu_004",
+          "name": "set_config",
+          "input": {
+            "path": "subagents.max_concurrent_global",
+            "value": 10
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "tu_003",
+          "content": {
+            "success": true,
+            "path": "chat.experimental.fast_streaming",
+            "value": true,
+            "requiresRestart": false
+          }
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "tu_004",
+          "content": {
+            "success": true,
+            "path": "subagents.max_concurrent_global",
+            "value": 10,
+            "requiresRestart": true
+          }
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I have successfully updated the configuration. \n\n- `chat.experimental.fast_streaming` is now set to `true` (applied immediately).\n- `subagents.max_concurrent_global` is now set to `10`. Note: This change requires a gateway restart to take effect."
+        }
+      ]
+    }
+  ]
+}

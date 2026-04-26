@@ -25,6 +25,22 @@ See `SPEC.md` (in chat history / project root once added) for the full project s
                                   vLLM-served LoRA ──► squad eval harness
 ```
 
+## Install
+
+```bash
+# local dev (Mac/Linux) — data gen, tests, no GPU
+./scripts/install.sh                          # creates .venv, installs base+dev extras
+npm i -g @google/gemini-cli && gemini         # one-time gemini login (data gen)
+
+# GPU host — full training
+./scripts/install.sh --mode gpu               # adds Unsloth, torch+CUDA, bitsandbytes, etc.
+
+# all-in-one (Linux GPU host doing everything)
+./scripts/install.sh --mode all
+```
+
+`./scripts/install.sh --help` for flags. `.env` is auto-scaffolded from `.env.example` on first run; edit it with real API keys before running anything that calls out.
+
 ## Quick start
 
 End-to-end, two commands on the GPU host:

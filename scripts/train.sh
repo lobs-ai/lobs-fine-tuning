@@ -36,6 +36,7 @@ Usage: $0 [--model NAME] [--skip-build] [-- <train.train flags>...]
 Common:
   --model NAME       HF model id (default: \$MODEL=$MODEL)
   --skip-build       skip the build_dataset.sh rebuild step
+  --smoke-test       2-step verification run (forwarded to train.train)
   -h | --help        show this message
 
 Anything after --model/--skip-build is forwarded to train.train.
