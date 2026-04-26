@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "runId": "synth001",
+    "agentType": "squad",
+    "model": "anthropic/claude-sonnet-4-5",
+    "succeeded": true,
+    "totalTurns": 2,
+    "stopReason": "end_turn",
+    "durationSeconds": 3,
+    "timestamp": "2026-04-26T00:00:00Z",
+    "toolsOffered": ["read", "edit", "exec", "create_task", "list_tasks"],
+    "difficulty": "easy"
+  },
+  "messages": [
+    {"role": "user", "content": "Look at /tmp/foo.py and add a docstring to the foo function."},
+    {
+      "role": "assistant",
+      "content": [
+        {"type": "text", "text": "Reading the file first."},
+        {"type": "tool_use", "id": "call_01", "name": "read", "input": {"file_path": "/tmp/foo.py"}}
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {"type": "tool_result", "tool_use_id": "call_01", "content": "1\tdef foo():\n2\t    return 42\n"}
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {"type": "text", "text": "Adding the docstring."},
+        {"type": "tool_use", "id": "call_02", "name": "edit", "input": {"file_path": "/tmp/foo.py", "old_string": "def foo():\n    return 42", "new_string": "def foo():\n    \"\"\"Return the answer to everything.\"\"\"\n    return 42"}}
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {"type": "tool_result", "tool_use_id": "call_02", "content": "Edited /tmp/foo.py: 1 replacement"}
+      ]
+    },
+    {"role": "assistant", "content": [{"type": "text", "text": "Done. Added a docstring to foo()."}]}
+  ]
+}

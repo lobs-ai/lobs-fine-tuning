@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+.ruff_cache/
+.pytest_cache/
+node_modules/
+artifacts/
+wandb/
+data/trajectories_raw/full/*.jsonl
+data/trajectories_raw/summary/*.jsonl
+data/trajectories_canonical/*.jsonl
+data/trajectories_filtered/*.jsonl
+data/train.jsonl
+data/val.jsonl
+data/tasks/*.jsonl
+!data/**/.gitkeep

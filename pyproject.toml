@@ -1,0 +1,54 @@
+[project]
+name = "lobs-fine-tuning"
+version = "0.1.0"
+description = "Tool-calling fine-tune of Qwen2.5-7B targeting the squad agent system"
+requires-python = ">=3.11"
+dependencies = [
+    "transformers>=4.45.0",
+    "tokenizers>=0.20.0",
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
+    "tiktoken>=0.8.0",
+    "pydantic>=2.9.0",
+    "rich>=13.9.0",
+    "tqdm>=4.66.0",
+]
+
+[project.optional-dependencies]
+train = [
+    "torch>=2.4.0",
+    "unsloth",
+    "trl>=0.11.0",
+    "peft>=0.13.0",
+    "bitsandbytes>=0.44.0",
+    "accelerate>=1.0.0",
+    "wandb>=0.18.0",
+    "datasets>=3.0.0",
+]
+eval = [
+    "vllm>=0.6.0",
+    "httpx>=0.27.0",
+]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.7.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tools*", "data_gen*", "train*", "eval*"]
