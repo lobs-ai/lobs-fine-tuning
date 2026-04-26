@@ -13,5 +13,7 @@ data/trajectories_canonical/*.jsonl
 data/trajectories_filtered/*.jsonl
 data/train.jsonl
 data/val.jsonl
+data/train.messages.jsonl
+data/val.messages.jsonl
 data/tasks/*.jsonl
 !data/**/.gitkeep

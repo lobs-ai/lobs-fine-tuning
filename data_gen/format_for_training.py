@@ -356,6 +356,16 @@ def main() -> int:
     parser.add_argument("--val-out", required=True)
     parser.add_argument("--text-out", help="optional human-readable JSONL for inspection")
     parser.add_argument(
+        "--messages-train-out",
+        help="optional ChatML/OpenAI messages JSONL for upload to Unsloth Studio "
+        "(or any external trainer that consumes raw messages). One record per "
+        "trajectory: {messages: [...], tools: [...]}. Untokenized; no loss masking applied.",
+    )
+    parser.add_argument(
+        "--messages-val-out",
+        help="optional val split for --messages-train-out",
+    )
+    parser.add_argument(
         "--tokenizer",
         default=os.environ.get("MODEL", ""),
         help="HF tokenizer id (default: $MODEL). Required if $MODEL is unset.",
@@ -417,10 +427,22 @@ def main() -> int:
     trajs = [t for t, _ in formatted]
     strata = [t.meta.extra.get("difficulty", "unknown") if t.meta.extra else "unknown" for t in trajs]
 
-    train_ex, val_ex = split_train_val(examples, args.val_frac, args.seed, stratify=strata)
+    # Split once on the trajectory list itself so the messages and tokenized
+    # outputs always agree on which trajectories went to which split.
+    indices = list(range(len(formatted)))
+    train_idx, val_idx = split_train_val(indices, args.val_frac, args.seed, stratify=strata)
 
+    train_ex = [examples[i] for i in train_idx]
+    val_ex = [examples[i] for i in val_idx]
     _write_tokenized(Path(args.train_out), train_ex)
     _write_tokenized(Path(args.val_out), val_ex)
+
+    if args.messages_train_out:
+        train_trajs = [trajs[i] for i in train_idx]
+        val_trajs = [trajs[i] for i in val_idx]
+        _write_messages(Path(args.messages_train_out), train_trajs)
+        if args.messages_val_out:
+            _write_messages(Path(args.messages_val_out), val_trajs)
 
     if args.text_out:
         _write_text(Path(args.text_out), formatted)
@@ -450,6 +472,38 @@ def _write_tokenized(path: Path, examples: list[FormattedExample]) -> None:
                 )
                 + "\n"
             )
+
+
+def _write_messages(path: Path, trajectories: list[Trajectory]) -> None:
+    """
+    ChatML/OpenAI messages JSONL — what Unsloth Studio (and any HF chat-
+    template-aware trainer) accepts directly. One record per trajectory:
+
+        {"messages": [{"role": "system", ...}, ...],
+         "tools": [{"type": "function", "function": {...}}, ...],
+         "meta": {"run_id": "...", "category": "..."}}
+
+    No tokenization, no loss masking — Studio applies its own chat template
+    and (when `train_on_responses_only` is enabled) masks user/system/tool
+    turns. Our spec §9.2 — "train on assistant turns only including tool
+    calls" — is exactly what train_on_responses_only does for these
+    templates, so the resulting masks match.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w") as f:
+        for traj in trajectories:
+            messages = trajectory_to_messages(traj)
+            tools = trajectory_tools(traj)
+            record = {
+                "messages": messages,
+                "tools": tools,
+                "meta": {
+                    "run_id": traj.meta.run_id,
+                    "category": (traj.meta.extra or {}).get("category", ""),
+                    "agent_type": traj.meta.agent_type,
+                },
+            }
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def _write_text(path: Path, items: list[tuple[Trajectory, FormattedExample]]) -> None:

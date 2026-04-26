@@ -101,7 +101,11 @@ python -m data_gen.filter --in data/trajectories_canonical/all.scrubbed.jsonl --
 python -m data_gen.format_for_training --in data/trajectories_filtered/all.jsonl --train-out data/train.jsonl --val-out data/val.jsonl --tokenizer "$MODEL" --verify
 ```
 
-### Train
+### Train (Unsloth Studio path)
+
+Upload `data/train.messages.jsonl` (and `data/val.messages.jsonl`) to Unsloth Studio, point it at your base model, click train. Studio applies the chat template + response-only loss masking to match what our spec expects. Download the LoRA adapter when done and drop it into `artifacts/adapter/`.
+
+### Train (local Unsloth path)
 
 Needs a CUDA GPU; Unsloth doesn't run on Mac.
 
@@ -115,6 +119,25 @@ Needs a CUDA GPU; Unsloth doesn't run on Mac.
 python -m train.train --model Qwen/Qwen2.5-7B-Instruct --lora-r 32
 python -m train.train --config train/config.yaml train.gradient_accumulation_steps=8
 ```
+
+### Eval — did the fine-tune learn anything?
+
+Held-out smoke eval: take prompts from `data/val.messages.jsonl`, generate the next assistant turn from the base and the adapter, parse tool calls, score them. Side-by-side comparison answers "did training move the needle":
+
+```bash
+./scripts/eval.sh                                   # base + adapter, side-by-side
+./scripts/eval.sh --n 50 -v                         # more prompts, verbose
+./scripts/eval.sh --base-only                       # baseline only
+./scripts/eval.sh --adapter-dir artifacts/run42/adapter
+```
+
+Reports four metrics, all percentages:
+- `any_tool_call` — emitted at least one parseable tool_call
+- `allowed_tool` — picked one of our 12 vendored tools
+- `required_fields` — call had every schema-required field
+- `exact_tool_match` — picked the same tool the teacher picked (the headline number)
+
+A useful adapter typically improves `exact_tool_match` by 20+ points over base.
 
 ## Layout
 

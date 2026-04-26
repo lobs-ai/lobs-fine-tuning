@@ -44,6 +44,8 @@ SCRUB_REPORT="${SCRUB_REPORT:-data/_scrub_report.json}"
 FILTERED_PATH="${FILTERED_PATH:-data/trajectories_filtered/all.jsonl}"
 TRAIN_PATH="${TRAIN_PATH:-data/train.jsonl}"
 VAL_PATH="${VAL_PATH:-data/val.jsonl}"
+MESSAGES_TRAIN_PATH="${MESSAGES_TRAIN_PATH:-data/train.messages.jsonl}"
+MESSAGES_VAL_PATH="${MESSAGES_VAL_PATH:-data/val.messages.jsonl}"
 TEXT_INSPECT_PATH="${TEXT_INSPECT_PATH:-data/_inspect.jsonl}"
 
 # Knobs
@@ -95,8 +97,12 @@ Stage outputs:
   --scrubbed PATH         scrub output                 [\$SCRUBBED_PATH=$SCRUBBED_PATH]
   --scrub-report PATH     scrub stats JSON             [\$SCRUB_REPORT=$SCRUB_REPORT]
   --filtered PATH         filter output                [\$FILTERED_PATH=$FILTERED_PATH]
-  --train PATH            train tokenized JSONL        [\$TRAIN_PATH=$TRAIN_PATH]
+  --train PATH            train tokenized JSONL (for train.train)
+                                                       [\$TRAIN_PATH=$TRAIN_PATH]
   --val PATH              val tokenized JSONL          [\$VAL_PATH=$VAL_PATH]
+  --messages-train PATH   train messages JSONL (for Unsloth Studio upload)
+                                                       [\$MESSAGES_TRAIN_PATH=$MESSAGES_TRAIN_PATH]
+  --messages-val PATH     val messages JSONL           [\$MESSAGES_VAL_PATH=$MESSAGES_VAL_PATH]
   --inspect PATH          human-readable rendered text [\$TEXT_INSPECT_PATH=$TEXT_INSPECT_PATH]
 
 Knobs:
@@ -132,6 +138,8 @@ while [[ $# -gt 0 ]]; do
         --filtered)       FILTERED_PATH="$2"; shift 2 ;;
         --train)          TRAIN_PATH="$2"; shift 2 ;;
         --val)            VAL_PATH="$2"; shift 2 ;;
+        --messages-train) MESSAGES_TRAIN_PATH="$2"; shift 2 ;;
+        --messages-val)   MESSAGES_VAL_PATH="$2"; shift 2 ;;
         --inspect)        TEXT_INSPECT_PATH="$2"; shift 2 ;;
         --model)          MODEL="$2"; TOKENIZER="${TOKENIZER_OVERRIDE:-$2}"; shift 2 ;;
         --tokenizer)      TOKENIZER="$2"; TOKENIZER_OVERRIDE="$2"; shift 2 ;;
@@ -240,6 +248,8 @@ if [[ "$SKIP_FORMAT" == "0" ]]; then
         --in "$FILTERED_PATH"
         --train-out "$TRAIN_PATH"
         --val-out "$VAL_PATH"
+        --messages-train-out "$MESSAGES_TRAIN_PATH"
+        --messages-val-out "$MESSAGES_VAL_PATH"
         --text-out "$TEXT_INSPECT_PATH"
         --tokenizer "$TOKENIZER"
         --max-len "$MAX_LEN"
@@ -256,7 +266,9 @@ hr
 say "done."
 say "  scrubbed:  $SCRUBBED_PATH"
 say "  filtered:  $FILTERED_PATH"
-[[ "$SKIP_FORMAT" == "0" ]] && say "  train:     $TRAIN_PATH"
-[[ "$SKIP_FORMAT" == "0" ]] && say "  val:       $VAL_PATH"
-[[ "$SKIP_FORMAT" == "0" ]] && say "  inspect:   $TEXT_INSPECT_PATH"
+[[ "$SKIP_FORMAT" == "0" ]] && say "  train (tokenized):  $TRAIN_PATH"
+[[ "$SKIP_FORMAT" == "0" ]] && say "  val (tokenized):    $VAL_PATH"
+[[ "$SKIP_FORMAT" == "0" ]] && say "  train (messages):   $MESSAGES_TRAIN_PATH  ← upload to Unsloth Studio"
+[[ "$SKIP_FORMAT" == "0" ]] && say "  val (messages):     $MESSAGES_VAL_PATH"
+[[ "$SKIP_FORMAT" == "0" ]] && say "  inspect:            $TEXT_INSPECT_PATH"
 hr
