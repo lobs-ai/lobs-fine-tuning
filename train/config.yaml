@@ -1,0 +1,81 @@
+# Training config — model-agnostic Unsloth QLoRA SFT.
+#
+# Anything you'd want to swap between runs lives here; the loop in train.py
+# is just glue. Override any field on the CLI:
+#
+#     python -m train.train --config train/config.yaml \
+#         model.name=Qwen/Qwen3-8B-Instruct lora.r=32
+#
+# The MODEL env var is used as a fallback for `model.name` when this file
+# leaves it empty, so the same MODEL var that drove dataset formatting also
+# drives training.
+
+model:
+  # HF model id. Empty → read from $MODEL env var. Tested with Qwen2.5,
+  # Qwen3, Llama-3.x Instruct, Mistral Instruct. Anything Unsloth's
+  # FastLanguageModel can load should work.
+  name: ""
+  # Sequence length cap. Must be >= the --max-len you used in formatting.
+  max_seq_length: 8192
+  # 4-bit quant for QLoRA. Set false to run plain LoRA in bf16.
+  load_in_4bit: true
+  # null → bf16 if supported, else fp16. Override with "bfloat16"/"float16".
+  dtype: null
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.0
+  bias: none
+  # Standard attention + MLP projections. Identical layer names across
+  # Qwen2/Qwen3/Llama/Mistral, so this works for any of them.
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+  use_gradient_checkpointing: unsloth
+  random_state: 42
+
+data:
+  train_path: data/train.jsonl
+  val_path: data/val.jsonl
+  # If the formatted JSONL is missing, error early instead of training on nothing.
+  require_nonempty: true
+
+train:
+  output_dir: artifacts/run
+  num_train_epochs: 2
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  logging_steps: 5
+  eval_strategy: steps
+  eval_steps: 50
+  save_strategy: steps
+  save_steps: 100
+  save_total_limit: 3
+  bf16: true
+  fp16: false
+  optim: adamw_8bit
+  seed: 42
+  report_to:
+    - wandb
+  # WANDB_PROJECT env var also works; this one wins if both are set.
+  wandb_project: lobs-fine-tuning
+
+save:
+  # Where the final LoRA adapter goes. Use this path with vLLM:
+  #     vllm serve <base> --enable-lora --lora-modules ft=<adapter_dir>
+  adapter_dir: artifacts/adapter
+  # If true, also save a merged-fp16 directory (eats disk; nice for serving
+  # without --enable-lora).
+  save_merged: false
+  merged_dir: artifacts/merged

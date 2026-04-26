@@ -71,7 +71,7 @@ We do not vendor the *implementations* — for data gen we run real squad. For t
 
 ## Format pipeline
 
-Four normalization layers between raw squad transcripts and Qwen training tensors:
+Four normalization layers between raw squad transcripts and student training tensors:
 
 ```
 raw transcript (summary JSONL | full JSONL | gateway DB | Anthropic JSON)
@@ -86,8 +86,10 @@ scrubbed canonical trajectory
 filtered trajectory
         │
         ▼  data_gen/format_for_training.py
-Qwen-templated example with masked labels (train.jsonl)
+chat-templated example with masked labels (train.jsonl)
 ```
+
+The formatter is base-model-agnostic — it loads any HF tokenizer whose chat template supports OpenAI-style `tools=` + `role:"tool"` replies (Qwen2/Qwen2.5/Qwen3, Llama-3.x Instruct, Mistral Instruct). Pick the base via `MODEL` (env or `--model` flag); the same id flows into `train/config.yaml`'s `model.name`. Switching tokenizer family means re-running `build_dataset.sh` against the new base — `train.jsonl` is tokenizer-specific.
 
 ## Secret scrubbing
 
@@ -124,12 +126,12 @@ If hard-filtered data is too noisy (per spec acceptance >75% pass = filters too 
 
 ## Eval
 
-Same code path: serve LoRA-merged Qwen via vLLM on `localhost:8000`, register it in squad's config as an OpenAI-compatible provider:
+Same code path: serve the LoRA adapter (or merged weights) via vLLM on `localhost:8000`, register it in squad's config as an OpenAI-compatible provider:
 
 ```json
 {
   "llm": {
-    "primary": { "model": "openai-compat/qwen-ft", "baseURL": "http://localhost:8000/v1" }
+    "primary": { "model": "openai-compat/student-ft", "baseURL": "http://localhost:8000/v1" }
   }
 }
 ```

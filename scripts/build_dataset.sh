@@ -47,7 +47,12 @@ VAL_PATH="${VAL_PATH:-data/val.jsonl}"
 TEXT_INSPECT_PATH="${TEXT_INSPECT_PATH:-data/_inspect.jsonl}"
 
 # Knobs
-TOKENIZER="${TOKENIZER:-Qwen/Qwen2.5-7B-Instruct}"
+# MODEL is the single source of truth for the base model — the formatter
+# uses its tokenizer/chat template, and the trainer fine-tunes it. TOKENIZER
+# is split out only so you can format against a different chat template than
+# you train on (rare; mostly useful for sanity-checking).
+MODEL="${MODEL:-Qwen/Qwen2.5-7B-Instruct}"
+TOKENIZER="${TOKENIZER:-$MODEL}"
 MAX_LEN="${MAX_LEN:-8192}"
 VAL_FRAC="${VAL_FRAC:-0.05}"
 SEED="${SEED:-42}"
@@ -67,6 +72,17 @@ usage() {
     cat <<EOF
 Usage: $0 [flags]
 
+Common:
+  --model NAME            HF model id; drives tokenizer + chat template (and
+                          later training). Tested with Qwen2/Qwen2.5/Qwen3
+                          Instruct, Llama-3.x Instruct, Mistral Instruct.
+                                                       [\$MODEL=$MODEL]
+
+Examples:
+  $0 --model Qwen/Qwen2.5-7B-Instruct
+  MODEL=Qwen/Qwen3-8B-Instruct $0
+  $0 --model meta-llama/Llama-3.1-8B-Instruct --skip-format
+
 Sources (where transcripts come from):
   --sessions-dir PATH     per-agent jsonl root         [\$SESSIONS_DIR=$SESSIONS_DIR]
   --full-dir PATH         full Anthropic-format dumps  [\$FULL_DIR=$FULL_DIR]
@@ -84,7 +100,8 @@ Stage outputs:
   --inspect PATH          human-readable rendered text [\$TEXT_INSPECT_PATH=$TEXT_INSPECT_PATH]
 
 Knobs:
-  --tokenizer NAME        HF tokenizer id              [\$TOKENIZER=$TOKENIZER]
+  --tokenizer NAME        HF tokenizer id (defaults to --model)
+                                                       [\$TOKENIZER=$TOKENIZER]
   --max-len N             drop sequences > N tokens    [\$MAX_LEN=$MAX_LEN]
   --val-frac F            fraction held back           [\$VAL_FRAC=$VAL_FRAC]
   --seed N                rng seed                     [\$SEED=$SEED]
@@ -116,7 +133,8 @@ while [[ $# -gt 0 ]]; do
         --train)          TRAIN_PATH="$2"; shift 2 ;;
         --val)            VAL_PATH="$2"; shift 2 ;;
         --inspect)        TEXT_INSPECT_PATH="$2"; shift 2 ;;
-        --tokenizer)      TOKENIZER="$2"; shift 2 ;;
+        --model)          MODEL="$2"; TOKENIZER="${TOKENIZER_OVERRIDE:-$2}"; shift 2 ;;
+        --tokenizer)      TOKENIZER="$2"; TOKENIZER_OVERRIDE="$2"; shift 2 ;;
         --max-len)        MAX_LEN="$2"; shift 2 ;;
         --val-frac)       VAL_FRAC="$2"; shift 2 ;;
         --seed)           SEED="$2"; shift 2 ;;
@@ -167,6 +185,7 @@ say "  full-dir:      $FULL_DIR"
 say "  manual-dir:    $MANUAL_DIR"
 say "  squad-name:    $SQUAD_NAME"
 say "  db-path:       ${DB_PATH:-<auto from \$SQUAD_HOME>}"
+say "  model:         $MODEL"
 say "  tokenizer:     $TOKENIZER (max-len $MAX_LEN, val-frac $VAL_FRAC)"
 hr
 

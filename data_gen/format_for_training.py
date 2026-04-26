@@ -1,5 +1,6 @@
 """
-Phase 4 — render canonical trajectories into Qwen2.5 training tensors.
+Phase 4 — render canonical trajectories into training tensors for any
+chat-templated HF causal LM.
 
 Two output kinds:
 - text-only inspection JSONL (--text-out): one record per trajectory with
@@ -9,22 +10,24 @@ Two output kinds:
   with `{input_ids, attention_mask, labels}` where labels=-100 on every
   token the model should NOT learn to predict (system, user, tool_result).
 
+Model-agnostic. Pass any HF tokenizer id whose chat template supports the
+OpenAI-style `tools=` argument and the `role: "tool"` reply shape — that
+includes Qwen2/Qwen2.5/Qwen3, Llama 3.x Instruct, Mistral Instruct, etc.
+
 Loss masking strategy
 ---------------------
 Spec §9.2: train on assistant turns only, including their tool_call tokens.
 Mask everything else. Implementation:
 
 1. Build the *full* messages list (system + user + assistant + tool_result + …).
-2. Tokenize the full conversation with `apply_chat_template(..., tokenize=True)`
-   and ALSO with `tokenize=False` so we have both the rendered text and the
-   token sequence.
-3. For each assistant turn, tokenize its segment in isolation (just that one
-   `[{"role":"assistant", ...}]`) and locate it as a substring in the full
-   rendered text. Then translate the byte span to a token span using the
-   tokenizer's `offset_mapping` (when available) or by re-tokenizing the
-   prefix and counting tokens (fallback).
-4. Set labels = input_ids except positions outside any assistant span,
-   which become -100.
+2. Render the full conversation with `apply_chat_template(..., tokenize=False)`
+   to get both rendered text and (separately) the token sequence.
+3. For each assistant turn, locate its rendered segment by templating the
+   prefix-up-to-and-including each assistant turn and the prefix-just-before,
+   then taking the substring delta. Translate the byte span to a token span
+   using the tokenizer's `offset_mapping` when available (fast tokenizers),
+   else fall back to re-tokenizing prefixes.
+4. Set labels = input_ids inside assistant spans, -100 elsewhere.
 
 The verification step decodes the unmasked positions and asserts the result
 contains the assistant text. If that check fails, do not start training.
@@ -34,7 +37,7 @@ Run:
       --in data/trajectories_filtered/all.jsonl \
       --train-out data/train.jsonl \
       --val-out data/val.jsonl \
-      --tokenizer Qwen/Qwen2.5-7B-Instruct \
+      --tokenizer "$MODEL" \
       --max-len 8192 \
       --val-frac 0.05 \
       --verify
@@ -74,9 +77,9 @@ def _load_tokenizer(name: str):  # noqa: ANN202
 
 def trajectory_to_messages(traj: Trajectory) -> list[dict[str, Any]]:
     """
-    Convert a Trajectory to the message list shape Qwen 2.5's chat template
-    consumes. Qwen accepts OpenAI-style messages with `tool_calls` on
-    assistant turns and a separate `role:"tool"` message per result.
+    Convert a Trajectory to the OpenAI-style message list that any modern
+    instruct chat template consumes: assistant turns may carry `tool_calls`,
+    tool replies are separate `role:"tool"` messages.
 
     System prompt: if the trajectory recorded one, use it; otherwise build
     a minimal default that matches squad's runtime default (so the student
@@ -345,12 +348,18 @@ def split_train_val(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Phase 4 — render trajectories for Qwen2.5 training.")
+    import os
+
+    parser = argparse.ArgumentParser(description="Phase 4 — render trajectories into HF-tokenized training JSONL.")
     parser.add_argument("--in", dest="in_path", required=True)
     parser.add_argument("--train-out", required=True)
     parser.add_argument("--val-out", required=True)
     parser.add_argument("--text-out", help="optional human-readable JSONL for inspection")
-    parser.add_argument("--tokenizer", default="Qwen/Qwen2.5-7B-Instruct")
+    parser.add_argument(
+        "--tokenizer",
+        default=os.environ.get("MODEL", ""),
+        help="HF tokenizer id (default: $MODEL). Required if $MODEL is unset.",
+    )
     parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument("--val-frac", type=float, default=0.05)
     parser.add_argument("--seed", type=int, default=42)
@@ -366,6 +375,13 @@ def main() -> int:
         help="how many examples to verify when --verify is set",
     )
     args = parser.parse_args()
+
+    if not args.tokenizer:
+        print(
+            "no tokenizer specified — pass --tokenizer or set $MODEL",
+            file=sys.stderr,
+        )
+        return 2
 
     trajectories = read_jsonl(Path(args.in_path))
     if not trajectories:

@@ -355,11 +355,18 @@ def _has_transformers() -> bool:
 
 @pytest.mark.skipif(not _has_transformers(), reason="transformers not installed")
 def test_format_round_trip() -> None:
-    """The most critical test: assistant tokens decode to assistant text."""
+    """The most critical test: assistant tokens decode to assistant text.
+
+    Defaults to Qwen2.5-7B-Instruct because it's small to download and has
+    the OpenAI-style tools+tool_calls chat template we depend on. Override
+    via $TEST_MODEL to verify against any other instruct tokenizer.
+    """
+    import os
     from transformers import AutoTokenizer
     from data_gen.format_for_training import format_one, verify_example
 
-    tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-7B-Instruct", trust_remote_code=True)
+    name = os.environ.get("TEST_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+    tok = AutoTokenizer.from_pretrained(name, trust_remote_code=True)
     traj = make_traj()
     ex = format_one(traj, tok, max_len=8192)
     assert ex is not None
