@@ -151,3 +151,7 @@ data/              all generated artifacts (gitignored)
 scripts/           build_dataset.sh, generate_data.sh, train.sh
 tests/             unit tests (mostly format round-trip checks)
 ```
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
